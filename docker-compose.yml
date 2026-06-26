@@ -1,0 +1,115 @@
+version: '3.8'
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: planbookai_rabbitmq
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+      RABBITMQ_ERLANG_COOKIE: "planbookai_erlang_cookie"
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
+  db:
+    image: mysql:8.0
+    container_name: planbookai_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-secret}
+      MYSQL_DATABASE: ${DB_NAME:-planbookai_db}
+    ports:
+      - "3307:3306"
+    volumes:
+      - db_data_v2:/var/lib/mysql
+
+  api-gateway:
+    build: ./backend/api-gateway
+    container_name: planbookai_api_gateway
+    restart: always
+    ports:
+      - "8000:80"
+    depends_on:
+      - auth-service
+      - discovery-service
+      - exam-service
+      - lesson-service
+      - ocr-service
+      - package-service
+      - question-service
+      - user-service
+
+  auth-service:
+    build: ./backend/auth-service
+    container_name: planbookai_auth_service
+    restart: always
+    depends_on:
+      - db
+      - discovery-service
+
+  discovery-service:
+    build: ./backend/discovery-service
+    container_name: planbookai_discovery_service
+    restart: always
+
+  exam-service:
+    build: ./backend/exam-service
+    container_name: planbookai_exam_service
+    restart: always
+    depends_on:
+      - db
+
+  lesson-service:
+    build: ./backend/lesson-service
+    container_name: planbookai_lesson_service
+    restart: always
+    depends_on:
+      - db
+
+  ocr-service:
+    build: ./backend/ocr-service
+    container_name: planbookai_ocr_service
+    restart: always
+
+  package-service:
+    build: ./backend/package-service
+    container_name: planbookai_package_service
+    restart: always
+    depends_on:
+      - db
+
+  question-service:
+    build: ./backend/question-service
+    container_name: planbookai_question_service
+    restart: always
+    depends_on:
+      - db
+
+  user-service:
+    build: ./backend/user-service
+    container_name: planbookai_user_service
+    restart: always
+    depends_on:
+      - db
+
+  frontend:
+    build: ./frontend
+    container_name: planbookai_frontend
+    restart: always
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - api-gateway
+
+volumes:
+  db_data_v2:
+  rabbitmq_data:
